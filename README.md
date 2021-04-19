@@ -3,7 +3,8 @@ Project to IDG2001 class at NTNU. It should simulate MQTT messaging between publ
 
 ### Quick start
 
-This is an example of how to list things you need to use the software and how to install them.
+Get started in 3 quick steps
+
 1. Install dependencies
   ```sh
   npm install 
