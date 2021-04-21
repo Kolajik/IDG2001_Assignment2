@@ -1,19 +1,22 @@
 {
   "name": "mqtt",
   "version": "1.0.0",
-  "description": "",
-  "main": "broker.js",
+  "description": "Assignment2 into IDG2001 course.",
+  "main": "assignment2.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node assignment2.js"
   },
   "author": "",
-  "license": "ISC",
+  "license": {
+    "type": "Apache-2.0",
+    "url": "https://opensource.org/licenses/apache2.0.php"
+  },
   "dependencies": {
     "dotenv": "^8.2.0",
-    "jsonschema": "^1.2.6",
-    "mongodb": "^2.1.21",
+    "jsonschema": "^1.4.0",
+    "mongodb": "^3.6.6",
     "mosca": "^2.8.3",
-    "mqtt": "^1.14.1"
+    "mqtt": "^4.2.6"
   }
 }
