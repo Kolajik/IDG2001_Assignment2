@@ -5,7 +5,7 @@
   "main": "assignment2.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node assignment2.js"
+    "start": "node assignment2.js & node publisher.js & node subscriber.js"
   },
   "author": "",
   "license": {
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "dotenv": "^8.2.0",
-    "jsonschema": "^1.4.0",
+    "jsonschema": "^1.2.6",
     "mongodb": "^3.6.6",
     "mosca": "^2.8.3",
     "mqtt": "^4.2.6"
