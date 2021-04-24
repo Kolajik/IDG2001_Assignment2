@@ -19,6 +19,7 @@
     "jsonschema": "^1.2.6",
     "mongodb": "^3.6.6",
     "mqtt": "^4.2.6",
-    "prompt-sync": "^4.2.0"
+    "prompt-sync": "^4.2.0",
+    "xml2json": "^0.12.0"
   }
 }
