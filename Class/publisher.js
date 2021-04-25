@@ -64,6 +64,7 @@ class Sensor {
         setInterval(() => {
           let message = { contentType: 'application/senml+json',
             data: {
+              bn: client.options.clientId,
               u: this.unit,
               n: this.name,
               v: getRandomIntInRange(-5,35),
