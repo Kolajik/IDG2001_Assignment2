@@ -1,11 +1,11 @@
 {
-  "name": "mqtt",
+  "name": "IDG2001 Assignment 2",
   "version": "1.0.0",
   "description": "Assignment2 into IDG2001 course.",
   "main": "assignment2.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node assignment2.js"
+    "start": "node broker.js"
   },
   "author": "",
   "license": {
@@ -13,10 +13,13 @@
     "url": "https://opensource.org/licenses/apache2.0.php"
   },
   "dependencies": {
+    "aedes": "^0.46.0",
+    "beauty-logger": "^3.0.0",
     "dotenv": "^8.2.0",
-    "jsonschema": "^1.4.0",
+    "jsonschema": "^1.2.6",
     "mongodb": "^3.6.6",
-    "mosca": "^2.8.3",
-    "mqtt": "^4.2.6"
+    "mqtt": "^4.2.6",
+    "prompt-sync": "^4.2.0",
+    "xml2json": "^0.12.0"
   }
 }
