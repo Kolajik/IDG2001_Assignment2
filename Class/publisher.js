@@ -1,7 +1,8 @@
 // ----- IMPORTS -----
 const mqtt = require('mqtt');
-const prompt = require('prompt-sync')({sigint: true});
+const prompt = require('prompt-sync')({ sigint: true });
 const path = require('path');
+var parser = require('xml2json');
 // const xml2json = require('xml2json'); // Used to convert JSON <--> XML
 const Logger = require("beauty-logger");
 
@@ -28,7 +29,7 @@ const messageTypes = ['application/senml+json', 'application/senml+xml'];
 
 // ----- GLOBAL FUNCTIONS -----
 function getRandomInt(max) {
-    return Math.floor(Math.random() * max);
+  return Math.floor(Math.random() * max);
 }
 
 function getRandomIntInRange(min, max) {
@@ -53,29 +54,37 @@ class Sensor {
 
   connectSensor() {
     client.on('connect', () => {
-      logger.info(this.name,`- sensor connected to ${this.topic} topic.`);
+      logger.info(this.name, `- sensor connected to ${this.topic} topic.`);
     })
   }
 
   sendMessage(messageType) {
-    if (messageType == 'application/senml+json') {
-      client.on('connect', () => {
-        logger.info(this.name,`- sensor connected to ${this.topic} topic.`);
-        setInterval(() => {
-          let message = { contentType: 'application/senml+json',
+    client.on('connect', () => {
+      logger.info(this.name, `- sensor connected to ${this.topic} topic.`);
+      setInterval(() => {
+        let message = {
+          wrap: {
+            contentType: messageType,
             data: {
               bn: client.options.clientId,
               u: this.unit,
               n: this.name,
-              v: getRandomIntInRange(-5,35),
+              v: getRandomIntInRange(-5, 35),
               t: Date.now()
-              }
+            }
           }
-          client.publish(this.topic, JSON.stringify(message));
-          logger.info(this.name,'- Published a message:', message);
-        }, 7500);
-      })
-    }
+        }
+        if (messageType == 'application/senml+json') {
+          var jsonMSG = JSON.stringify(message)
+          client.publish(this.topic, jsonMSG);
+        }
+        if (messageType == 'application/senml+xml') {
+          var xmlMSG = parser.toXml(message);
+          client.publish(this.topic, xmlMSG);
+        }
+        logger.info(this.name, '- Published a message as ', messageType, message);
+      }, 7500);
+    })
   }
 
   endConnection() {
@@ -99,7 +108,7 @@ while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName
   if (!sensorCreation.sensorName.trim()) {
     console.log("Enter the sensor name:");
     sensorCreation.sensorName = prompt();
-    if(!sensorCreation.sensorName.trim()) {
+    if (!sensorCreation.sensorName.trim()) {
       logger.warn(`Incorrect name input. Please enter non-empty string.`);
       continue;
     }
@@ -109,7 +118,7 @@ while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName
     console.log('Enter the sensor\'s topic. Choose from these topics: ', rooms);
     sensorCreation.sensorTopic = prompt();
     if (!rooms.includes(sensorCreation.sensorTopic)) {
-      logger.warn(sensorCreation.sensorName,'- Incorrect topic chosen. Please choose from these topics:', rooms);
+      logger.warn(sensorCreation.sensorName, '- Incorrect topic chosen. Please choose from these topics:', rooms);
       continue;
     }
   }
@@ -118,13 +127,13 @@ while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName
     console.log(`Enter the sensor unit reported:`);
     sensorCreation.sensorUnit = prompt();
     if (!sensorCreation.sensorUnit.trim()) {
-      logger.warn(sensorCreation.sensorName,`- Incorrect unit input. Please enter non-empty string.`);
+      logger.warn(sensorCreation.sensorName, `- Incorrect unit input. Please enter non-empty string.`);
       continue;
     }
   }
 }
 
 let sensor = new Sensor(sensorCreation.sensorName, sensorCreation.sensorTopic, sensorCreation.sensorUnit);
-logger.info(sensor.name,`- Created a sensor: `, sensor.getSensorDetails());
-sensor.sendMessage(messageTypes[0]);
+logger.info(`- Created a sensor: \n`, sensor.getSensorDetails());
+sensor.sendMessage(messageTypes[1]);
 // sensor.endConnection();

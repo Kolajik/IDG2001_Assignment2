@@ -2,6 +2,7 @@
 const mqtt = require('mqtt');
 const prompt = require('prompt-sync')({sigint: true});
 const path = require('path');
+var parser = require('xml2json');
 const Logger = require("beauty-logger");
 
 // ----- DECLARATIONS OF GLOBAL VARS -----
@@ -48,8 +49,15 @@ class Subscriber {
   receiveMessages() {
     client.on('message', (topic, packet) => {
         const msg = packet.toString()
-        const msgJSON = JSON.parse(msg);
-        logger.info(this.name,'- Received a message from', msgJSON.n, 'on topic', topic, 'with data:', msg)
+
+        // if XML payload, parse like this
+        var data = parser.toJson(msg, { object: true });
+        const msgJSON = data.wrap
+
+        //if JSON string payload, parse like this:
+        // const msgJSON = JSON.parse(msg);
+
+        logger.info(this.name,'- Received a message from', msgJSON.n, 'on topic', topic, 'with data:', msgJSON)
     })
   }
 }

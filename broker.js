@@ -2,6 +2,7 @@
 const aedes = require('aedes')();
 const server = require('net').createServer(aedes.handle);
 require('dotenv').config()
+var parser = require('xml2json');
 const MongoClient = require('mongodb').MongoClient
 const path = require('path');
 const Logger = require("beauty-logger");
@@ -50,14 +51,14 @@ async function runDB() {
 runDB().catch(console.error);
 
 // When a sensor connects to the broker
-aedes.on('client', function(client) {
+aedes.on('client', function (client) {
   logger.info('BROKER - Client Connected: \x1b[33m' + (client ? client.id : client) + '\x1b[0m', 'to broker', process.env.BROKER);
 })
 
 // When a sensor disconnects from the broker
 aedes.on('clientDisconnect', async function (client) {
   logger.info('BROKER - Client Disconnected: \x1b[31m' + (client ? client.id : client) + '\x1b[0m', 'to broker', aedes.id)
-  var query = {clientID: client.id}
+  var query = { clientID: client.id }
 
   // Deletes a publisher from PUB_COLLECTION
   const deletePub = await mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
@@ -75,22 +76,22 @@ aedes.on('clientDisconnect', async function (client) {
 })
 
 // When a client subscribes to a topic
-aedes.on('subscribe', async function(subscriptions, client) {
+aedes.on('subscribe', async function (subscriptions, client) {
   // Find if subscriber exists. If not, insert into DB.
-  var query = {clientID: client.id}
+  var query = { clientID: client.id }
   const findSubscriber = await mongodbClient.db(DATABASE).collection(SUB_COLLECTION)
-  .find(query)
-  .toArray()
-  .catch(console.error);
+    .find(query)
+    .toArray()
+    .catch(console.error);
 
   if (findSubscriber.length == 0) {
-    var sub_data = {clientID: client.id, topics: subscriptions.map(s => s.topic), insertedAt: Date.now()}
+    var sub_data = { clientID: client.id, topics: subscriptions.map(s => s.topic), insertedAt: Date.now() }
     const pushSubscriber = mongodbClient.db(DATABASE).collection(SUB_COLLECTION)
-    .insertOne(sub_data)
-    .then(pushSubscriber => {
-      logger.info(`BROKER - A new subscriber with id ${sub_data.clientID} was inserted to DB ${DATABASE} and table ${SUB_COLLECTION}.`);
-    })
-    .catch(console.error)
+      .insertOne(sub_data)
+      .then(pushSubscriber => {
+        logger.info(`BROKER - A new subscriber with id ${sub_data.clientID} was inserted to DB ${DATABASE} and table ${SUB_COLLECTION}.`);
+      })
+      .catch(console.error)
   }
 
   logger.info('BROKER - MQTT client \x1b[32m' + (client ? client.id : client) +
@@ -104,36 +105,42 @@ aedes.on('unsubscribe', function (subscriptions, client) {
 })
 
 // Broker stores to DB when data is published to it.
-aedes.on('publish', async function(packet, client) {
+aedes.on('publish', async function (packet, client) {
   var payload = packet.payload.toString()
-  logger.info(`BROKER - Message received:`,payload)
+  logger.info(`BROKER - Message received:`, payload)
   if (!rooms.includes(packet.topic))
     return logger.debug('BROKER - Client pushed a message to topic', packet.topic)
 
-  const data = JSON.parse(payload)
+  // if XML payload, parse to json object like this
+  var data = parser.toJson(payload, { object: true });
+  data = data.wrap
+
+  // if json string payload, parse to json object like this
+  // const data = JSON.parse(payload)
+
   data.topic = packet.topic
 
   // Find if publisher exists. If not, insert into DB.
-  var query = {name: data.n, topic: packet.topic}
-  var pub_data = {name: data.n, topic: packet.topic, clientID: client.id, unit:data.u, insertedAt: Date.now()}
+  var query = { name: data.n, topic: packet.topic }
+  var pub_data = { name: data.n, topic: packet.topic, clientID: client.id, unit: data.u, insertedAt: Date.now() }
   const findSensor = await mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-  .find(query)
-  .toArray()
-  .catch(console.error);
+    .find(query)
+    .toArray()
+    .catch(console.error);
 
   if (findSensor.length == 0) {
     const pushSensor = mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-    .insertOne(pub_data)
-    .then(pushSensor => {
-      logger.info(`BROKER - A new publisher with name ${pub_data.name} was inserted to DB ${DATABASE} and table ${PUB_COLLECTION}.`);
-    })
-    .catch(console.error)
+      .insertOne(pub_data)
+      .then(pushSensor => {
+        logger.info(`BROKER - A new publisher with name ${pub_data.name} was inserted to DB ${DATABASE} and table ${PUB_COLLECTION}.`);
+      })
+      .catch(console.error)
   };
 
   // Store message in DB.
   const result = mongodbClient.db(DATABASE).collection(MSG_COLLECTION)
-  .insertOne(data)
-  .then(result => {
-    logger.debug(`BROKER - Message`, data, `was inserted to DB ${DATABASE} and table ${MSG_COLLECTION}.`);
-  })
+    .insertOne(data)
+    .then(result => {
+      logger.debug(`BROKER - Message`, data, `was inserted to DB ${DATABASE} and table ${MSG_COLLECTION}.`);
+    })
 })
