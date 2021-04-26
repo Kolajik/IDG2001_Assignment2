@@ -16,6 +16,7 @@
     "aedes": "^0.46.0",
     "beauty-logger": "^3.0.0",
     "dotenv": "^8.2.0",
+    "exificient.js": "^0.0.5",
     "jsonschema": "^1.2.6",
     "mongodb": "^3.6.6",
     "mqtt": "^4.2.6",

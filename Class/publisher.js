@@ -2,6 +2,7 @@
 const mqtt = require('mqtt');
 const prompt = require('prompt-sync')({ sigint: true });
 const path = require('path');
+const EXI4JSON = require('exificient.js');
 var parser = require('xml2json');
 // const xml2json = require('xml2json'); // Used to convert JSON <--> XML
 const Logger = require("beauty-logger");
@@ -25,7 +26,7 @@ const logger = new Logger({
 });
 const client = mqtt.connect('mqtt://localhost:8080');
 const rooms = ['Bedroom', 'Garage', 'LivingRoom', 'Basement'];
-const messageTypes = ['application/senml+json', 'application/senml+xml'];
+const messageTypes = ['senml+json', 'senml+xml', 'senml+exi'];
 
 // ----- GLOBAL FUNCTIONS -----
 function getRandomInt(max) {
@@ -38,17 +39,19 @@ function getRandomIntInRange(min, max) {
 
 // ---- PUBLISHER CLASS ----
 class Sensor {
-  constructor(name, topic, unit) {
+  constructor(name, topic, unit, payload) {
     this.name = name;
     this.topic = topic;
     this.unit = unit;
+    this.payload = payload;
   }
 
   getSensorDetails() {
     return {
       "name": this.name,
       "topic": this.topic,
-      "unit": this.unit
+      "unit": this.unit,
+      'payload': this.payload
     }
   }
 
@@ -58,13 +61,13 @@ class Sensor {
     })
   }
 
-  sendMessage(messageType) {
+  sendMessage() {
     client.on('connect', () => {
-      logger.info(this.name, `- sensor connected to ${this.topic} topic.`);
+      logger.info(this.name, `- sensor connected to ${this.topic} topic, with ${this.payload} as payload`);
       setInterval(() => {
         let message = {
           wrap: {
-            contentType: messageType,
+            contentType: `application/${this.payload}`,
             data: {
               bn: client.options.clientId,
               u: this.unit,
@@ -74,15 +77,24 @@ class Sensor {
             }
           }
         }
-        if (messageType == 'application/senml+json') {
+        let options = { properties: { contentType: this.payload } }
+
+        if (this.payload == 'senml+json') {
           var jsonMSG = JSON.stringify(message)
           client.publish(this.topic, jsonMSG);
         }
-        if (messageType == 'application/senml+xml') {
+        if (this.payload == 'senml+xml') {
+          // encode JSON object
           var xmlMSG = parser.toXml(message);
           client.publish(this.topic, xmlMSG);
         }
-        logger.info(this.name, '- Published a message as ', messageType, message);
+        if (this.payload == 'senml+exi') {
+
+          // encode JSON object
+          var uint8Array = EXI4JSON.exify(message);
+          client.publish(this.topic, uint8Array, options);
+        }
+        logger.info(this.name, '- Published a message as ', this.payload, message);
       }, 7500);
     })
   }
@@ -101,10 +113,11 @@ client.on('error', (err) => {
 let sensorCreation = {
   sensorTopic: '',
   sensorName: '',
-  sensorUnit: ''
+  sensorUnit: '',
+  sensorPayload: ''
 }
 
-while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName.trim() || !sensorCreation.sensorUnit.trim()) {
+while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName.trim() || !sensorCreation.sensorUnit.trim() || !sensorCreation.sensorPayload.trim()) {
   if (!sensorCreation.sensorName.trim()) {
     console.log("Enter the sensor name:");
     sensorCreation.sensorName = prompt();
@@ -123,6 +136,15 @@ while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName
     }
   }
 
+  if (!messageTypes.includes(sensorCreation.sensorPayload)) {
+    console.log('Enter the sensor\'s payload type. Choose from these types: ', messageTypes);
+    sensorCreation.sensorPayload = prompt();
+    if (!messageTypes.includes(sensorCreation.sensorPayload)) {
+      logger.warn(sensorCreation.sensorName, '- Incorrect payload chosen. Please choose from these topics:', messageTypes);
+      continue;
+    }
+  }
+
   if (!sensorCreation.sensorUnit.trim()) {
     console.log(`Enter the sensor unit reported:`);
     sensorCreation.sensorUnit = prompt();
@@ -131,9 +153,10 @@ while (!rooms.includes(sensorCreation.sensorTopic) || !sensorCreation.sensorName
       continue;
     }
   }
+
 }
 
-let sensor = new Sensor(sensorCreation.sensorName, sensorCreation.sensorTopic, sensorCreation.sensorUnit);
+let sensor = new Sensor(sensorCreation.sensorName, sensorCreation.sensorTopic, sensorCreation.sensorUnit, sensorCreation.sensorPayload);
 logger.info(`- Created a sensor: \n`, sensor.getSensorDetails());
-sensor.sendMessage(messageTypes[1]);
+sensor.sendMessage();
 // sensor.endConnection();
