@@ -94,7 +94,7 @@ class Sensor {
           var uint8Array = EXI4JSON.exify(message);
           client.publish(this.topic, uint8Array, options);
         }
-        logger.info(this.name, '- Published a message as ', this.payload, message);
+        logger.info(this.name, '- Published a message as', this.payload, 'in', this.topic, message);
       }, 7500);
     })
   }

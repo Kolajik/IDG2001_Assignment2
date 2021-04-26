@@ -1,8 +1,9 @@
 // ----- IMPORTS -----
 const mqtt = require('mqtt');
-const prompt = require('prompt-sync')({sigint: true});
+const prompt = require('prompt-sync')({ sigint: true });
 const path = require('path');
 var parser = require('xml2json');
+const EXI4JSON = require('exificient.js');
 const Logger = require("beauty-logger");
 
 // ----- DECLARATIONS OF GLOBAL VARS -----
@@ -42,23 +43,45 @@ class Subscriber {
   connectToTopics() {
     client.on('connect', () => {
       client.subscribe(this.topics);
-      logger.info(this.name,'- Subscribed to', this.topics.map(s => s).join(','), 'topic(s).')
+      logger.info(this.name, '- Subscribed to', this.topics.map(s => s).join(','), 'topic(s).')
     })
   }
 
   receiveMessages() {
     client.on('message', (topic, packet) => {
-        const msg = packet.toString()
 
-        // if XML payload, parse like this
-        var data = parser.toJson(msg, { object: true });
-        const msgJSON = data.wrap
+      var data = EXI4JSON.parse(packet).wrap;
+      console.log('\n\n Data recieved: \n', data)
+      // console.log('client', client)
+      // console.log(packet)
 
-        //if JSON string payload, parse like this:
+      // if XML payload, parse to json object like this
+      // var data = parser.toJson(payload, { object: true });
+      // data = data.wrap
+
+      // if json string payload, parse to json object like this
+      // const data = JSON.parse(payload)
+
+      data.topic = packet.topic
+      let exi = true;
+      let msgJSON;
+      if (exi) {
+        let stringData = JSON.stringify(data)
+        console.log('stringit baby', stringData)
+        msgJSON = JSON.parse(stringData)
+
+      }
+        // const msg = packet.toString()
+
+        // ------- if XML payload, parse like this
+        // var data = parser.toJson(msg, { object: true });
+        // const msgJSON = data.wrap
+
+        // ------- if JSON string payload, parse like this:
         // const msgJSON = JSON.parse(msg);
 
-        logger.info(this.name,'- Received a message from', msgJSON.n, 'on topic', topic, 'with data:', msgJSON)
-    })
+        logger.info(this.name, '- Received a message from', msgJSON.n, 'on topic', topic, 'with data:', msgJSON)
+      })
   }
 }
 
@@ -77,7 +100,7 @@ while (subCreation.subTopics.length == 0 || !subCreation.subName.trim()) {
   if (!subCreation.subName.trim()) {
     console.log('Enter the subscriber\'s name:');
     subCreation.subName = prompt();
-    if(!subCreation.subName.trim()) {
+    if (!subCreation.subName.trim()) {
       logger.warn(`Incorrect name input. Please enter non-empty string.`);
       continue;
     }
@@ -91,7 +114,7 @@ while (subCreation.subTopics.length == 0 || !subCreation.subName.trim()) {
       console.log('Enter the subscriber\'s topic. You can choose from these topics: ', rooms);
       topic = prompt();
       if (!rooms.includes(topic)) {
-        logger.warn(subCreation.subName,'- Incorrect topic chosen. Please choose from these topics:', rooms);
+        logger.warn(subCreation.subName, '- Incorrect topic chosen. Please choose from these topics:', rooms);
         continue;
       }
       if (!subCreation.subTopics.includes(topic)) {
@@ -104,10 +127,10 @@ while (subCreation.subTopics.length == 0 || !subCreation.subName.trim()) {
     }
 
     subCreation.usersChoice = ''
-    while(!subCreation.usersChoice.trim() || !(['n','y'].includes(subCreation.usersChoice.toLowerCase()))) {
+    while (!subCreation.usersChoice.trim() || !(['n', 'y'].includes(subCreation.usersChoice.toLowerCase()))) {
       console.log('Continue adding topics to the subscriber? [Y/N]');
       subCreation.usersChoice = prompt()
-      if (!subCreation.usersChoice.trim() || !(['n','y'].includes(subCreation.usersChoice.toLowerCase()))) {
+      if (!subCreation.usersChoice.trim() || !(['n', 'y'].includes(subCreation.usersChoice.toLowerCase()))) {
         console.log('Wrong input.');
       }
     }
@@ -125,6 +148,6 @@ while (subCreation.subTopics.length == 0 || !subCreation.subName.trim()) {
 }
 
 let subscriber = new Subscriber(subCreation.subName, subCreation.subTopics);
-logger.info(subscriber.name,'- Created a subscriber:', subscriber.getSubscriberDetails())
+logger.info(subscriber.name, '- Created a subscriber:', subscriber.getSubscriberDetails())
 subscriber.connectToTopics();
 subscriber.receiveMessages();
