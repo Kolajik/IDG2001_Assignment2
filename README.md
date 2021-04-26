@@ -39,6 +39,7 @@ Get started in 3 quick steps
   * Stores the client in mongoDB to collection `Subscribers` with topics it had subscribed to (if it does not exist yet)
 * Event *'publish'*:
   * When a client publishes a message to the broker (*'publish'* event initiated by the client)
+  * Converts message to JSON - differs through contentType
   * Stores the publisher in mongoDB to collection `Publishers` (if it does not exist yet)
   * Stores the message in mongoDB to collection `Messages`
 * Event *'unsubscribe'*:
@@ -51,22 +52,24 @@ Get started in 3 quick steps
 Publishers have a choice of connecting to eiter one of the `rooms` below. Then the code chooses randomly which format of the message it will be sending from `messageTypes`:
 ```js
 const rooms = ['Bedroom', 'Garage', 'LivingRoom', 'Basement'];
-const messageTypes = ['application/senml+json', 'application/senml+xml'];
+const messageTypes = ['senml+json', 'senml+xml', 'senml+exi'];
 ```
 You can start one or more publishers. When starting a `publisher.js`:
 1. Enter name of the publisher (sensor),
 2. Enter a topic to which you want the sensor to connect,
-3. Enter a unit reported by the sensor,
-4. The publisher starts sending messages every 7.5 seconds to the broker in format:
+3. Enter the contentType of the messages sensor should send,
+4. Enter a unit reported by the sensor,
+5. The publisher starts sending messages every 7.5 seconds to the broker in format:
   ```js
-  { contentType: '<chosen messageType>',
+  {
+    contentType: `application/${this.payload}`,
     data: {
       bn: client.options.clientId,
       u: this.unit,
       n: this.name,
-      v: getRandomIntInRange(-5,35),
+      v: getRandomIntInRange(-5, 35),
       t: Date.now()
-      }
+    }
   }
   ```
 

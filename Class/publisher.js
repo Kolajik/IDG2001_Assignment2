@@ -4,7 +4,6 @@ const prompt = require('prompt-sync')({ sigint: true });
 const path = require('path');
 const EXI4JSON = require('exificient.js');
 var parser = require('xml2json');
-// const xml2json = require('xml2json'); // Used to convert JSON <--> XML
 const Logger = require("beauty-logger");
 
 // ----- DECLARATIONS OF GLOBAL VARS -----
@@ -66,33 +65,43 @@ class Sensor {
       logger.info(this.name, `- sensor connected to ${this.topic} topic, with ${this.payload} as payload`);
       setInterval(() => {
         let message = {
-          wrap: {
-            contentType: `application/${this.payload}`,
-            data: {
-              bn: client.options.clientId,
-              u: this.unit,
-              n: this.name,
-              v: getRandomIntInRange(-5, 35),
-              t: Date.now()
-            }
+          contentType: `application/${this.payload}`,
+          data: {
+            bn: client.options.clientId,
+            u: this.unit,
+            n: this.name,
+            v: getRandomIntInRange(-5, 35),
+            t: Date.now()
           }
         }
-        let options = { properties: { contentType: this.payload } }
-
-        if (this.payload == 'senml+json') {
-          var jsonMSG = JSON.stringify(message)
-          client.publish(this.topic, jsonMSG);
-        }
-        if (this.payload == 'senml+xml') {
-          // encode JSON object
-          var xmlMSG = parser.toXml(message);
-          client.publish(this.topic, xmlMSG);
-        }
-        if (this.payload == 'senml+exi') {
-
-          // encode JSON object
-          var uint8Array = EXI4JSON.exify(message);
-          client.publish(this.topic, uint8Array, options);
+        switch (this.payload) {
+          // EXI interpretation
+          case 'senml+exi':
+            client.publish(this.topic, EXI4JSON.exify(message));
+          break;
+          // JSON interpretation
+          case 'senml+json':
+            client.publish(this.topic, JSON.stringify(message));
+          break;
+          // XML interpretation
+          case 'senml+xml':
+            message = {
+              contentType: `application/${this.payload}`,
+              data: parser.toXml({
+                sensml: {
+                  'xmlns': 'urn:ietf:params:xml:ns:senml',
+                  senml: {
+                    bn: client.options.clientId,
+                    u: this.unit,
+                    n: this.name,
+                    v: getRandomIntInRange(-5, 35),
+                    t: Date.now()
+                  }
+                }
+              })
+            }
+            client.publish(this.topic, JSON.stringify(message));
+          break;
         }
         logger.info(this.name, '- Published a message as', this.payload, 'in', this.topic, message);
       }, 7500);

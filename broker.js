@@ -107,77 +107,64 @@ aedes.on('unsubscribe', function (subscriptions, client) {
 
 // Broker stores to DB when data is published to it.
 aedes.on('publish', async function (packet, client) {
-  var payload = packet.payload.toString()
-  // payload with EXI is a big string not human readable
-  // logger.info(`BROKER - Message received:`, payload)
+  var payload = packet.payload.toString();
+  var exi = false;
+  var data = null;
   if (!rooms.includes(packet.topic))
     return logger.debug('BROKER - Client pushed a message to topic', packet.topic)
 
-  var data = EXI4JSON.parse(packet.payload).wrap;
-  console.log('\n\n Data recieved: \n', data)
-  // console.log('client', client)
-  console.log(packet)
-  
-  // if XML payload, parse to json object like this
-  // var data = parser.toJson(payload, { object: true });
-  // data = data.wrap
+  try {
+    data = EXI4JSON.parse(packet.payload)
+    exi = true;
+  } catch (e) {
+    logger.info('Payload is not an EXI type.')
+  }
 
-  // if json string payload, parse to json object like this
-  // const data = JSON.parse(payload)
-
+  if (!exi) {
+    data = JSON.parse(payload)
+    // logger.debug('data:', data);
+    let formattedData = null;
+    if (data.contentType == 'application/senml+xml') {
+      formattedData = parser.toJson(data.data);
+      dataParsed = JSON.parse(formattedData);
+      data.data = dataParsed;
+    }
+  }
   data.topic = packet.topic
-  let exi = true
-  if (exi) {
-    stringData = JSON.stringify(data)
-    // console.log('stringit baby', stringData)
-    data = JSON.parse(stringData)
-    // Find if publisher exists. If not, insert into DB.
-    var query = { name: data.n, topic: packet.topic }
-    var pub_data = { name: data.n, topic: packet.topic, clientID: client.id, unit: data.u, insertedAt: Date.now() }
-    const findSensor = await mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-      .find(query)
-      .toArray()
-      .catch(console.error);
+  logger.info('BROKER - Received message after parsing:',data);
 
-    if (findSensor.length == 0) {
-      const pushSensor = mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-        .insertOne(pub_data)
-        .then(pushSensor => {
-          logger.info(`BROKER - A new publisher with name ${pub_data.name} was inserted to DB ${DATABASE} and table ${PUB_COLLECTION}.`);
-        })
-        .catch(console.error)
-    };
-
-    // Store message in DB.
-    const result = mongodbClient.db(DATABASE).collection(MSG_COLLECTION)
-      .insertOne(data)
-      .then(result => {
-        logger.debug(`BROKER - Message`, data, `was inserted to DB ${DATABASE} and table ${MSG_COLLECTION}.`);
-      })
+  // Find if publisher exists. If not, insert into DB.
+  var query = { name: data.data.n, topic: packet.topic }
+  var pub_data = null;
+  if (data.contentType == 'application/senml+xml') {
+    query = { name: data.data.sensml.senml.n, topic: packet.topic }
+    pub_data = { name: data.data.sensml.senml.n, topic: packet.topic, clientID: client.id, unit: data.data.sensml.senml.u, insertedAt: Date.now() }
   }
-  else {
-    // Find if publisher exists. If not, insert into DB.
-    var query = { name: data.n, topic: packet.topic }
-    var pub_data = { name: data.n, topic: packet.topic, clientID: client.id, unit: data.u, insertedAt: Date.now() }
-    const findSensor = await mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-      .find(query)
-      .toArray()
-      .catch(console.error);
+  else if (data.contentType == 'application/senml+exi') {
+    let name = data.data.n
+    let unit = data.data.u
+    query = { name: name, topic: packet.topic }
+    pub_data = { name: name, topic: packet.topic, clientID: client.id, unit: unit, insertedAt: Date.now() }
+  } else
+    pub_data = { name: data.data.n, topic: packet.topic, clientID: client.id, unit: data.data.u, insertedAt: Date.now() }
+  const findSensor = await mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
+  .find(query)
+  .toArray()
+  .catch(console.error);
 
-    if (findSensor.length == 0) {
-      const pushSensor = mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
-        .insertOne(pub_data)
-        .then(pushSensor => {
-          logger.info(`BROKER - A new publisher with name ${pub_data.name} was inserted to DB ${DATABASE} and table ${PUB_COLLECTION}.`);
-        })
-        .catch(console.error)
-    };
+  if (findSensor.length == 0) {
+    const pushSensor = mongodbClient.db(DATABASE).collection(PUB_COLLECTION)
+    .insertOne(pub_data)
+    .then(pushSensor => {
+      logger.info(`BROKER - A new publisher with name ${pub_data.name} was inserted to DB ${DATABASE} and table ${PUB_COLLECTION}.`);
+    })
+    .catch(console.error)
+  };
 
-    // Store message in DB.
-    const result = mongodbClient.db(DATABASE).collection(MSG_COLLECTION)
-      .insertOne(data)
-      .then(result => {
-        logger.debug(`BROKER - Message`, data, `was inserted to DB ${DATABASE} and table ${MSG_COLLECTION}.`);
-      })
-  }
+  // Store message in DB.
+  const result = mongodbClient.db(DATABASE).collection(MSG_COLLECTION)
+  .insertOne(data)
+  .then(result => {
+    logger.debug(`BROKER - Message`, data, `was inserted to DB ${DATABASE} and table ${MSG_COLLECTION}.`);
+  })
 })
