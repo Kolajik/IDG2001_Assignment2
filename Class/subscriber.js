@@ -49,39 +49,33 @@ class Subscriber {
 
   receiveMessages() {
     client.on('message', (topic, packet) => {
+      console.log('packet:', packet);
+      var payload = packet.toString();
+      var exi = false;
+      var data = null;
+      if (!rooms.includes(topic))
+        return logger.debug(this.name,'- Received a message on topic', topic)
 
-      var data = EXI4JSON.parse(packet).wrap;
-      console.log('\n\n Data recieved: \n', data)
-      // console.log('client', client)
-      // console.log(packet)
-
-      // if XML payload, parse to json object like this
-      // var data = parser.toJson(payload, { object: true });
-      // data = data.wrap
-
-      // if json string payload, parse to json object like this
-      // const data = JSON.parse(payload)
-
-      data.topic = packet.topic
-      let exi = true;
-      let msgJSON;
-      if (exi) {
-        let stringData = JSON.stringify(data)
-        console.log('stringit baby', stringData)
-        msgJSON = JSON.parse(stringData)
-
+      try {
+        data = JSON.parse(JSON.stringify(EXI4JSON.parse(packet)))
+        exi = true;
+      } catch (e) {
+        logger.info('Payload is not an EXI type.')
       }
-        // const msg = packet.toString()
 
-        // ------- if XML payload, parse like this
-        // var data = parser.toJson(msg, { object: true });
-        // const msgJSON = data.wrap
-
-        // ------- if JSON string payload, parse like this:
-        // const msgJSON = JSON.parse(msg);
-
-        logger.info(this.name, '- Received a message from', msgJSON.n, 'on topic', topic, 'with data:', msgJSON)
-      })
+      if (!exi) {
+        data = JSON.parse(payload)
+        // logger.debug('data:', data);
+        let formattedData = null;
+        if (data.contentType == 'application/senml+xml') {
+          formattedData = parser.toJson(data.data);
+          let dataParsed = JSON.parse(formattedData);
+          data.data = dataParsed;
+        }
+      }
+      data.topic = topic
+      logger.info(this.name, '- Received a message from', data.data.n, 'on topic', topic, 'with data:', data)
+    })
   }
 }
 

@@ -114,7 +114,7 @@ aedes.on('publish', async function (packet, client) {
     return logger.debug('BROKER - Client pushed a message to topic', packet.topic)
 
   try {
-    data = EXI4JSON.parse(packet.payload)
+    data = JSON.parse(JSON.stringify(EXI4JSON.parse(packet.payload)))
     exi = true;
   } catch (e) {
     logger.info('Payload is not an EXI type.')
@@ -126,7 +126,7 @@ aedes.on('publish', async function (packet, client) {
     let formattedData = null;
     if (data.contentType == 'application/senml+xml') {
       formattedData = parser.toJson(data.data);
-      dataParsed = JSON.parse(formattedData);
+      let dataParsed = JSON.parse(formattedData);
       data.data = dataParsed;
     }
   }
