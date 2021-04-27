@@ -3,7 +3,7 @@ Project to IDG2001 class at NTNU. It should simulate MQTT messaging between publ
 
 ### Quick start
 
-Get started in 3 quick steps
+Get started in several quick steps
 
 1. Install dependencies
   ```sh
